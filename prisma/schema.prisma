@@ -1,0 +1,38 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+enum Role {
+  utilisateur
+  administrateur
+}
+
+model Utilisateur {
+  id            Int    @id @default(autoincrement())
+  nomUtilisateur String
+  email         String @unique
+  password      String
+  role          String @default("utilisateur")
+  taches        Tache[] // Relation avec les tâches
+}
+
+model Tache {
+  id          Int    @id @default(autoincrement())
+  titre       String
+  description String
+  dateEcheance DateTime?
+  priorite    String
+  statut      String
+  estPrive    Boolean @default(false)
+  bloquee     Boolean @default(false) // Ajout du champ bloquee
+  userId      Int
+  utilisateur Utilisateur @relation(fields: [userId], references: [id])
+}
