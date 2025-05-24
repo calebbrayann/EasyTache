@@ -137,20 +137,16 @@ export async function modifierTache(req, res) {
 
     // Un utilisateur ne peut PAS modifier une tâche bloquée
     if (tache.bloquee && userRole !== "administrateur") {
-      return res
-        .status(403)
-        .json({
-          error: "Cette tâche est bloquée et ne peut pas être modifiée.",
-        });
+      return res.status(403).json({
+        error: "Cette tâche est bloquée et ne peut pas être modifiée.",
+      });
     }
 
     // Seul un administrateur peut modifier le statut `bloquee`
     if (bloquee !== undefined && userRole !== "administrateur") {
-      return res
-        .status(403)
-        .json({
-          error: "Seul un administrateur peut bloquer ou débloquer une tâche.",
-        });
+      return res.status(403).json({
+        error: "Seul un administrateur peut bloquer ou débloquer une tâche.",
+      });
     }
 
     const tacheModifiee = await prisma.tache.update({
@@ -160,7 +156,7 @@ export async function modifierTache(req, res) {
 
     res.json(tacheModifiee);
   } catch (error) {
-    console.error("❌ Erreur modification tâche :", error);
+    console.error("Erreur modification tâche :", error);
     res.status(500).json({ error: "Erreur serveur." });
   }
 }

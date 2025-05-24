@@ -41,7 +41,7 @@ prisma
     console.error("Erreur de connexion Prisma :", error);
   });
 
-// 📌 Correction : Routes API correctement mappées
+//  Correction : Routes API correctement mappées
 app.use("/api/auth", Routesauth);
 app.use("/api/taches", Routestaches);
 

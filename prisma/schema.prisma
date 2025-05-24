@@ -22,6 +22,7 @@ model Utilisateur {
   password      String
   role          String @default("utilisateur")
   taches        Tache[] // Relation avec les tâches
+  provider      String?  // Ajout de `provider`, optionnel si besoin
 }
 
 model Tache {

@@ -10,8 +10,6 @@ import { envoyerEmail } from "../config/nodemailer.js";
 dotenv.config();
 const prisma = new PrismaClient();
 
-;
-
 // Configuration Nodemailer
 const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -94,7 +92,6 @@ export async function register(req, res) {
   }
 }
 
-
 // Connexion utilisateur
 export async function login(req, res) {
   const { email, password } = req.body;
@@ -165,5 +162,63 @@ export async function resetPassword(req, res) {
   } catch (error) {
     console.error("Erreur reset password :", error);
     res.status(500).json({ error: "Erreur serveur." });
+  }
+}
+
+// Enregistrement de l'utilisateur Google dans la base de données
+export async function saveGoogleUser(userData) {
+  if (!prisma) {
+    console.error("Prisma est undefined !");
+    return;
+  }
+
+  try {
+    const existingUser = await prisma.utilisateur.findUnique({
+      where: { email: userData.emails[0].value },
+    });
+
+    if (!existingUser) {
+      console.log("🛠 Création d’un nouvel utilisateur Google...");
+      const newUser = await prisma.utilisateur.create({
+        data: {
+          nomUtilisateur: userData.displayName, // Ajout de `nomUtilisateur`
+          email: userData.emails[0].value,
+          password: crypto.randomBytes(16).toString("hex"), // Génération d'un mot de passe aléatoir
+          provider: "google",
+          role: "utilisateur", // Ajoute un rôle par défaut
+        },
+      });
+      console.log("Nouvel utilisateur enregistré :", newUser);
+    } else {
+      console.log("L'utilisateur existe déjà :", existingUser);
+    }
+  } catch (error) {
+    console.error(" Erreur Prisma lors de l’enregistrement :", error);
+  }
+}
+
+export async function saveGitHubUser(userData) {
+  try {
+    const existingUser = await prisma.utilisateur.findUnique({
+      where: { email: userData.emails[0].value },
+    });
+
+    if (!existingUser) {
+      console.log("🛠 Création d’un nouvel utilisateur GitHub...");
+      const newUser = await prisma.utilisateur.create({
+        data: {
+          email: userData.emails[0].value,
+          nomUtilisateur: userData.displayName,
+          password: crypto.randomBytes(16).toString("hex"),
+          provider: "github",
+          role: "utilisateur",
+        },
+      });
+      console.log("Utilisateur GitHub enregistré :", newUser);
+    } else {
+      console.log("L'utilisateur existe déjà :", existingUser);
+    }
+  } catch (error) {
+    console.error("Erreur Prisma lors de l’enregistrement :", error);
   }
 }
