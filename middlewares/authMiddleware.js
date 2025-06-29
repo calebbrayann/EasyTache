@@ -17,5 +17,5 @@ console.log("Token reçu :", req.headers.authorization);
    {
     return res.status(401).json({ error: "Token invalide ou expiré." });
     
-  }
+  } 
 }
