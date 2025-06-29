@@ -57,9 +57,8 @@ prisma
   .catch((error) => console.error(" Erreur Prisma :", error));
 
 //  Routes
-app.use("/api/auth", Routesauth);
-app.use("/api/taches", Routestaches);
-
+app.use("/api/auth", Routesauth); //
+app.use("/api/taches", csrfProtection, Routestaches);
 //  Expose le token CSRF (utile pour le frontend)
 app.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
