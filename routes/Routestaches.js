@@ -11,4 +11,9 @@ router.post("/", tacheController.creerTache);
 router.put("/:id", tacheController.modifierTache);
 router.delete("/:id", tacheController.supprimerTache);
 
+// Routes admin pour bloquer/débloquer une tâche
+router.patch("/:id/bloquer", authAdminMiddleware, tacheController.bloquerTache);
+router.patch("/:id/debloquer", authAdminMiddleware, tacheController.debloquerTache);
+
+
 export default router;
