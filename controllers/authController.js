@@ -7,6 +7,8 @@ import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
 dotenv.config();
+console.log(" DATABASE_URL utilisée :", process.env.DATABASE_URL);
+
 const prisma = new PrismaClient();
 
 // ➤ Inscription
