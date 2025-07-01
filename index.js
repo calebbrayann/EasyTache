@@ -11,16 +11,21 @@ import csrf from "csurf";
 import session from "express-session";
 import passport from "./config/passport.js";
 import pkg from "@prisma/client";
+import cors from "cors";
 const { PrismaClient } = pkg;
 
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5173;
+
+app.use(cors({
+  origin: process.env.FRONTEND_URL || "http://localhost:5173",
+  credentials: true,
+}));
 
 app.use(bodyParser.json());
 app.use(cookieParser());
-
 app.use(helmet());
 
 // Limite les requêtes (100 requêtes max / 15 min)
@@ -31,45 +36,51 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-//  Cookies + CSRF
-app.use(cookieParser());
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET,
-    resave: false,
-    saveUninitialized: false,
-  })
-);
-const csrfProtection = csrf({ cookie: true });
-app.use(csrfProtection);
+// Sessions pour passport
+app.use(session({
+  secret: process.env.SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+}));
 
-//  Authentification
+// Middleware CSRF initialisé
+const csrfProtection = csrf({ cookie: true });
+
+// IMPORTANT : on exclut CSRF sur les routes API JSON et d’authentification
+app.use((req, res, next) => {
+  // Si c’est une route d’auth ou une requête JSON (API), on saute CSRF
+  if (req.path.startsWith("/api/auth") || req.is("application/json")) {
+    return next();
+  }
+  // Sinon, on applique CSRF normalement
+  csrfProtection(req, res, next);
+});
+
+// Authentification
 app.use(passport.initialize());
 app.use(passport.session());
 
-//  Lecture du JSON
-app.use(bodyParser.json());
+// Routes
+app.use("/api/auth", Routesauth);
+app.use("/api/taches", Routestaches);
 
-//  Prisma connecté ?
-prisma
-  .$connect()
-  .then(() => console.log("Prisma connecté"))
-  .catch((error) => console.error(" Erreur Prisma :", error));
-
-//  Routes
-app.use("/api/auth", Routesauth); //
-app.use("/api/taches", csrfProtection, Routestaches);
-//  Expose le token CSRF (utile pour le frontend)
+// Route pour exposer le token CSRF (utile si frontend web)
 app.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 
-//  Page d’accueil
+// Accueil
 app.get("/", (req, res) => {
   res.send("Bienvenue sur mon API sécurisée de gestion de tâches !");
 });
 
-//  Test SMTP
+// Connexion Prisma
+prisma
+  .$connect()
+  .then(() => console.log("Prisma connecté"))
+  .catch((error) => console.error("Erreur Prisma :", error));
+
+// Test SMTP (optionnel)
 async function testSMTP() {
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -81,20 +92,20 @@ async function testSMTP() {
 
   try {
     await transporter.verify();
-    console.log(" Connexion SMTP OK");
+    console.log("Connexion SMTP OK");
   } catch (error) {
-    console.error(" SMTP erreur :", error);
+    console.error("SMTP erreur :", error);
   }
 }
 testSMTP();
 
-//  Lancer serveur
+// Lancement serveur
 app.listen(PORT, () => {
-  console.log(` Serveur lancé sur http://localhost:${PORT}`);
+  console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
 
-//  Nettoyage Prisma
+// Déconnexion Prisma à la fermeture
 process.on("exit", async () => {
   await prisma.$disconnect();
-  console.log(" Prisma déconnecté proprement.");
+  console.log("Prisma déconnecté proprement.");
 });
