@@ -6,16 +6,12 @@ export default function authMiddleware(req, res, next) {
     return res.status(401).json({ error: "Token manquant, accès refusé." });
   }
 
-  const token = authHeader.split(" ")[1]; // Extraction du token après "Bearer"
-console.log("Token reçu :", req.headers.authorization);
-
+  const token = authHeader.split(" ")[1]; // Extrait le token après "Bearer"
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded; //  Stocke l'utilisateur dans `req.user`
-    next(); // Passe à la prochaine étape
-  } catch (error)
-   {
+    req.user = decoded; // Stocke l’utilisateur dans req.user
+    next();
+  } catch (error) {
     return res.status(401).json({ error: "Token invalide ou expiré." });
-    
-  } 
+  }
 }
