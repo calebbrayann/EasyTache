@@ -2,6 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import Routesauth from "./routes/Routesauth.js";
 import Routestaches from "./routes/Routestaches.js";
+import Routesadmin from "./routes/adminRoutes.js";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";
 import helmet from "helmet";
@@ -63,6 +64,7 @@ app.use(passport.session());
 // Routes
 app.use("/api/auth", Routesauth);
 app.use("/api/taches", Routestaches);
+app.use("/api/admin", adminRoutes);
 
 // Route pour exposer le token CSRF (utile si frontend web)
 app.get("/csrf-token", (req, res) => {
