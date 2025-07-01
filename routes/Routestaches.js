@@ -1,6 +1,7 @@
 import { Router } from "express";
 import * as tacheController from "../controllers/tacheControllers.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
+import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
 
 const router = Router();
 
