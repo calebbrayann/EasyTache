@@ -1,6 +1,6 @@
 import { Router } from "express";
-import { authMiddleware } from "../middlewares/authMiddleware.js";
-import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
+import authMiddleware from "../middlewares/authMiddleware.js";           // import par défaut
+import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js"; // import nommé
 
 const router = Router();
 
