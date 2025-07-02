@@ -5,6 +5,7 @@
   "main": "index.js",
   "type": "module",
   "scripts": {
+    "dev": "nodemon index.js",
     "postinstall": "prisma generate && prisma migrate deploy",
     "start": "node index.js",
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -36,5 +37,8 @@
     "sanitize-html": "^2.17.0",
     "sqlite3": "^5.1.7",
     "xss-clean": "^0.1.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.10"
   }
 }
