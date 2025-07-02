@@ -18,10 +18,10 @@ const { PrismaClient } = pkg;
 dotenv.config();
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || ;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors({
-  origin: process.env.FRONTEND_URL || ,
+  origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
 }));
 
@@ -49,11 +49,9 @@ const csrfProtection = csrf({ cookie: true });
 
 // IMPORTANT : on exclut CSRF sur les routes API JSON et d’authentification
 app.use((req, res, next) => {
-  // Si c’est une route d’auth ou une requête JSON (API), on saute CSRF
   if (req.path.startsWith("/api/auth") || req.is("application/json")) {
     return next();
   }
-  // Sinon, on applique CSRF normalement
   csrfProtection(req, res, next);
 });
 
