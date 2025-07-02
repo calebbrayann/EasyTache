@@ -1,25 +1,24 @@
 import { Router } from "express";
 import passport from "passport";
+import jwt from "jsonwebtoken";
 import {
   register,
   login,
   demandeResetPassword,
   resetPassword,
-  saveGoogleUser,
-  saveGitHubUser,
 } from "../controllers/authController.js";
 
 const router = Router();
 
-// ========== Auth classique ==========
+//  Auth classique 
 router.post("/register", register);
 router.post("/login", login);
 
-// ========== Réinitialisation mot de passe ==========
+//  Réinitialisation mot de passe 
 router.post("/request-reset", demandeResetPassword);
 router.post("/reset-password/:resetToken", resetPassword);
 
-// ========== Google Auth ==========
+//  Google Auth 
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -27,17 +26,24 @@ router.get(
 
 router.get(
   "/google/callback",
-  passport.authenticate("google", { failureRedirect: "/login?error=google" }),
-  async (req, res) => {
+  passport.authenticate("google", {
+    failureRedirect: "/login?error=google",
+    session: false, // Important : désactive la session
+  }),
+  (req, res) => {
     if (!req.user) return res.redirect("/login?error=google");
 
-    await saveGoogleUser(req.user);
-    req.session.user = req.user;
-    res.redirect("/dashboard");
+    const token = jwt.sign(
+      { userId: req.user.id, role: req.user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
   }
 );
 
-// ========== GitHub Auth ==========
+//  GitHub Auth 
 router.get(
   "/github",
   passport.authenticate("github", { scope: ["user:email", "read:user"] })
@@ -45,23 +51,26 @@ router.get(
 
 router.get(
   "/github/callback",
-  passport.authenticate("github", { failureRedirect: "/login?error=github" }),
-  async (req, res) => {
+  passport.authenticate("github", {
+    failureRedirect: "/login?error=github",
+    session: false,
+  }),
+  (req, res) => {
     if (!req.user) return res.redirect("/login?error=github");
 
-    await saveGitHubUser(req.user);
-    req.session.user = req.user;
-    res.redirect("/dashboard");
+    const token = jwt.sign(
+      { userId: req.user.id, role: req.user.role },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
+
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
   }
 );
 
-// ========== Statut session ==========
+//  Statut 
 router.get("/status", (req, res) => {
-  if (req.session.user) {
-    res.json({ user: req.session.user });
-  } else {
-    res.json({ user: "Non connecté" });
-  }
+  res.json({ user: req.user || "Non connecté" });
 });
 
 export default router;
