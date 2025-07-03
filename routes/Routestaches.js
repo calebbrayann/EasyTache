@@ -1,6 +1,6 @@
 import { Router } from "express";
 import * as tacheController from "../controllers/tacheControllers.js";
-import authMiddleware from "../middlewares/authMiddleware.js";
+import { verifierToken as authMiddleware } from "../middlewares/authMiddleware.js";
 import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
 import { canDeleteTask } from "../middlewares/roleMiddleware.js" ;
 
@@ -20,6 +20,6 @@ router.delete("/:id", canDeleteTask, tacheController.supprimerTache);
 router.patch("/:id/bloquer", authAdminMiddleware, tacheController.bloquerTache);
 router.patch("/:id/debloquer", authAdminMiddleware, tacheController.debloquerTache);
 
-router.get('/taches/:id', taskController.getTacheById);
+router.get('/taches/:id', tacheController.getTacheById);
 
 export default router;
