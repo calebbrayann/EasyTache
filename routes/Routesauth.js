@@ -10,7 +10,7 @@ import {
   supprimerCompte,
   updatePassword,
   updateUserProfile,  
-  activate
+  activer
 } from "../controllers/authController.js"
 import { verifierToken } from "../middlewares/authMiddleware.js"
  
@@ -33,7 +33,7 @@ authRouter.put("/update-password", verifierToken, updatePassword)
 authRouter.put("/update-profile", verifierToken, updateUserProfile)
 
 // Activation du compte
-authRouter.get("/activate/:id", activate);
+authRouter.get("/activer/:id", activer);
 
 
 // Auth Google
