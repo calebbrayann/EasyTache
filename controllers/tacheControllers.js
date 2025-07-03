@@ -35,14 +35,14 @@ export async function creerTache(req, res) {
       data: {
         titre: titreNettoye,
         description: descriptionNettoyee,
-        dateEcheance: new Date(dateEcheance),
-        priorite,
+        dateEcheance: new Date(dueDate),
+        priorite: priority,
         statut: "en cours",
         userId,
-        estPrive,
+        estPrive: visibility === "private",
         bloquee: contientMotDangereux,
       },
-    });
+    })
 
     if (contientMotDangereux) {
       console.log(`ALERTE : Tâche bloquée (${titreNettoye})`);
