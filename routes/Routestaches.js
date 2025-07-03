@@ -1,25 +1,20 @@
-import { Router } from "express";
-import * as tacheController from "../controllers/tacheControllers.js";
-import { verifierToken as authMiddleware } from "../middlewares/authMiddleware.js";
-import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
-import { canDeleteTask } from "../middlewares/roleMiddleware.js" ;
+// routes/tacheRoutes.js
+import { Router } from "express"
+import * as tacheController from "../controllers/tacheControllers.js"
+import { verifierToken as authMiddleware } from "../middlewares/authMiddleware.js"
+import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js"
+import { canDeleteTask } from "../middlewares/roleMiddleware.js"
 
-const router = Router();
+const tacheRouter = Router()
 
-// Middleware d'authentification
-router.use(authMiddleware);
+tacheRouter.use(authMiddleware)
 
-router.get("/", tacheController.listerTaches);
-router.post("/", tacheController.creerTache);
-router.put("/:id", tacheController.modifierTache);
+tacheRouter.get("/", tacheController.listerTaches)
+tacheRouter.post("/", tacheController.creerTache)
+tacheRouter.put("/:id", tacheController.modifierTache)
+tacheRouter.delete("/:id", canDeleteTask, tacheController.supprimerTache)
+tacheRouter.patch("/:id/bloquer", authAdminMiddleware, tacheController.bloquerTache)
+tacheRouter.patch("/:id/debloquer", authAdminMiddleware, tacheController.debloquerTache)
+tacheRouter.get("/taches/:id", tacheController.getTacheById)
 
-// Suppression d'une tâche (avec vérification si l'utilisateur peut la supprimer)
-router.delete("/:id", canDeleteTask, tacheController.supprimerTache);
-
-// Routes admin pour bloquer/débloquer une tâche
-router.patch("/:id/bloquer", authAdminMiddleware, tacheController.bloquerTache);
-router.patch("/:id/debloquer", authAdminMiddleware, tacheController.debloquerTache);
-
-router.get('/taches/:id', tacheController.getTacheById);
-
-export default router;
+export default tacheRouter
