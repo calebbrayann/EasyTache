@@ -67,7 +67,7 @@ app.use(passport.session());
 // Routes
 app.use("/api/auth", Routesauth);
 app.use("/api/taches", Routestaches);
-app.use("/api/admin", adminRoutes);
+app.use("/api/administrateur", adminRoutes);
 
 // Route pour exposer le token CSRF (utile pour le frontend)
 app.get("/csrf-token", (req, res) => {
