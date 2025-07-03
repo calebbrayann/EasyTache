@@ -9,10 +9,11 @@ import {
   resetPassword,
   supprimerCompte,
   updatePassword,
-  updateUserProfile,
+  updateUserProfile,  
+  activate
 } from "../controllers/authController.js"
 import { verifierToken } from "../middlewares/authMiddleware.js"
-import { activate } from "../controllers/authController.js"; 
+ 
 
 const authRouter = Router()
 
@@ -30,6 +31,10 @@ authRouter.delete("/supprimer", verifierToken, supprimerCompte)
 // Mise à jour du mot de passe & profil
 authRouter.put("/update-password", verifierToken, updatePassword)
 authRouter.put("/update-profile", verifierToken, updateUserProfile)
+
+// Activation du compte
+authRouter.get("/activate/:id", activate);
+
 
 // Auth Google
 authRouter.get("/google", passport.authenticate("google", { scope: ["profile", "email"] }))

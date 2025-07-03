@@ -426,4 +426,29 @@ export const updateUserProfile = async (req, res) => {
 };
 
 
-  
+  // ➤ Activation du compte
+export async function activer(req, res) {
+  const { id } = req.params;
+
+  try {
+    const utilisateur = await prisma.utilisateur.findUnique({ where: { id: Number(id) } });
+
+    if (!utilisateur) {
+      return res.status(404).json({ error: "Utilisateur introuvable." });
+    }
+
+    if (utilisateur.isActive) {
+      return res.status(400).json({ message: "Ce compte est déjà activé." });
+    }
+
+    await prisma.utilisateur.update({
+      where: { id: Number(id) },
+      data: { isActive: true },
+    });
+
+    res.json({ message: "Votre compte a bien été activé. Vous pouvez maintenant vous connecter !" });
+  } catch (error) {
+    console.error("Erreur lors de l'activation du compte :", error);
+    res.status(500).json({ error: "Une erreur est survenue pendant l'activation." });
+  }
+}
