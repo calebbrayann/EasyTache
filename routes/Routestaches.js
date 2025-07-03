@@ -2,7 +2,7 @@ import { Router } from "express";
 import * as tacheController from "../controllers/tacheControllers.js";
 import authMiddleware from "../middlewares/authMiddleware.js";
 import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
-import { canDeleteTask } from "../middlewares/taskMiddleware.js";  // Ajout de ce middleware
+import { canDeleteTask } from "../middlewares/roleMiddleware.js" ;
 
 const router = Router();
 
