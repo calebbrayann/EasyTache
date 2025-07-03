@@ -10,8 +10,8 @@ import {
   supprimerCompte,
   updatePassword,
   updateUserProfile,  
-  activer
 } from "../controllers/authController.js"
+import { activer } from "../controllers/authController.js";
 import { verifierToken } from "../middlewares/authMiddleware.js"
  
 
