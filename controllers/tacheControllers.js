@@ -4,31 +4,30 @@ const { PrismaClient } = pkg;
 
 const prisma = new PrismaClient();
 
-// Liste de mots dangereux pour bloquer certaines tâches
-const motsDangereux = ["violence", "piratage", "fraude", "danger"];
-
 // Fonction de nettoyage XSS
 function nettoyerTexte(texte) {
-  return sanitizeHtml(texte, { allowedTags: [], allowedAttributes: {} });
+  return sanitizeHtml(texte, { allowedTags: [], allowedAttributes: {} })
 }
 
-// Création d'une tâche (l'utilisateur choisit sa priorité)
+// Liste simple de mots sensibles (à adapter selon ton app)
+const motsDangereux = ["bombe", "violence", "haine", "interdit"]
+
 export async function creerTache(req, res) {
   const { title, description, dueDate, priority, visibility } = req.body
   const userId = req.user?.userId
 
- 
   if (!userId || !title || !description || !dueDate || !priority) {
     return res.status(400).json({ error: "Tous les champs sont requis." })
   }
 
   // Nettoyage XSS
-  const titreNettoye = nettoyerTexte(titre);
-  const descriptionNettoyee = nettoyerTexte(description);
+  const titreNettoye = nettoyerTexte(title)
+  const descriptionNettoyee = nettoyerTexte(description)
 
+  // Détection de contenu sensible
   const contientMotDangereux = motsDangereux.some((mot) =>
-    descriptionNettoyee?.includes(mot)
-  );
+    descriptionNettoyee.toLowerCase().includes(mot)
+  )
 
   try {
     const nouvelleTache = await prisma.tache.create({
@@ -38,22 +37,23 @@ export async function creerTache(req, res) {
         dateEcheance: new Date(dueDate),
         priorite: priority,
         statut: "en cours",
-        userId,
+        utilisateurId: userId, // 
         estPrive: visibility === "private",
         bloquee: contientMotDangereux,
       },
     })
 
     if (contientMotDangereux) {
-      console.log(`ALERTE : Tâche bloquée (${titreNettoye})`);
+      console.log(`⚠️ ALERTE : Tâche bloquée automatiquement : "${titreNettoye}"`)
     }
 
-    res.status(201).json(nouvelleTache);
+    return res.status(201).json(nouvelleTache)
   } catch (error) {
-    console.error("Erreur création tâche :", error);
-    res.status(500).json({ error: "Erreur serveur lors de la création de la tâche." });
+    console.error("💥 Erreur création tâche :", error)
+    return res.status(500).json({ error: "Erreur serveur lors de la création de la tâche." })
   }
 }
+
 
 // Liste des tâches
 export async function listerTaches(req, res) {
