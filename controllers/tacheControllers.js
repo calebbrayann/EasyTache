@@ -14,11 +14,12 @@ function nettoyerTexte(texte) {
 
 // Création d'une tâche (l'utilisateur choisit sa priorité)
 export async function creerTache(req, res) {
-  const { titre, description, dateEcheance, priorite, estPrive } = req.body;
-  const userId = req.user?.userId;
+  const { title, description, dueDate, priority, visibility } = req.body
+  const userId = req.user?.userId
 
-  if (!userId || !titre || !description || !dateEcheance || !priorite) {
-    return res.status(400).json({ error: "Tous les champs sont requis." });
+ 
+  if (!userId || !title || !description || !dueDate || !priority) {
+    return res.status(400).json({ error: "Tous les champs sont requis." })
   }
 
   // Nettoyage XSS
