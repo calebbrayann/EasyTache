@@ -1,8 +1,7 @@
 import jwt from "jsonwebtoken";
 
-// Middleware pour vérifier et valider le token JWT
-export const verifierToken = (req, res, next) => {
-  // Récupérer le token à partir des cookies ou de l'en-tête d'autorisation (format "Bearer token")
+export const authMiddleware = (req, res, next) => {
+  // Récupérer le token à partir des cookies ou de l'en-tête d'autorisation
   const token = req.cookies?.token || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
@@ -13,12 +12,12 @@ export const verifierToken = (req, res, next) => {
     // Vérifier et décoder le token JWT
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Vérifier que le token contient l'information nécessaire (ici, l'ID de l'utilisateur)
+    // Vérifier que le token contient les informations nécessaires
     if (!decoded.userId) {
       return res.status(401).json({ error: "Jeton invalide." });
     }
 
-    // Ajouter les informations décodées dans la requête pour les utiliser dans les middlewares/routes suivantes
+    // Ajouter les informations décodées dans la requête pour les utiliser dans d'autres middlewares/routes
     req.user = { userId: decoded.userId, role: decoded.role };
 
     // Passer au middleware suivant

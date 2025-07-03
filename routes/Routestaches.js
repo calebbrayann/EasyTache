@@ -1,10 +1,8 @@
-// Routestaches.js
-
 import { Router } from "express";
 import * as tacheController from "../controllers/tacheControllers.js";
 import { authAdminMiddleware } from "../middlewares/authAdminMiddleware.js";
 import { canDeleteTask } from "../middlewares/roleMiddleware.js";
-import { authMiddleware } from "../middlewares/authMiddleware.js"; // Importation nommée
+import { authMiddleware } from "../middlewares/authMiddleware.js"; // Correctement importé
 
 const router = Router();
 
