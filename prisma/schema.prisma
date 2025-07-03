@@ -19,7 +19,9 @@ model Utilisateur {
   password       String
   role           Role     @default(utilisateur)  // Utilisation de l'enum Role
   taches         Tache[]  // Relation avec les tâches
-  provider       String?  // Optionnel : méthode d'authentification (ex: google, github)
+  provider       String?  // Optionnel : méthode d'authentification (google, github)
+   joinDate       DateTime @default(now())
+  isActive       Boolean  @default(false)
 }
 
 model Tache {

@@ -6,19 +6,22 @@ import {
   login,
   demandeResetPassword,
   resetPassword,
+  supprimerCompte 
 } from "../controllers/authController.js";
+
+import { verifierToken } from "../middlewares/authMiddleware.js"; // ← middleware pour sécuriser la suppression
 
 const router = Router();
 
-//  Auth classique 
+// Auth classique
 router.post("/register", register);
 router.post("/login", login);
 
-//  Réinitialisation mot de passe 
+// Réinitialisation mot de passe
 router.post("/request-reset", demandeResetPassword);
 router.post("/reset-password/:resetToken", resetPassword);
 
-//  Google Auth 
+// Auth Google
 router.get(
   "/google",
   passport.authenticate("google", { scope: ["profile", "email"] })
@@ -28,7 +31,7 @@ router.get(
   "/google/callback",
   passport.authenticate("google", {
     failureRedirect: "/login?error=google",
-    session: false, // Important : désactive la session
+    session: false,
   }),
   (req, res) => {
     if (!req.user) return res.redirect("/login?error=google");
@@ -39,11 +42,17 @@ router.get(
       { expiresIn: "1d" }
     );
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 
-//  GitHub Auth 
+// Auth GitHub
 router.get(
   "/github",
   passport.authenticate("github", { scope: ["user:email", "read:user"] })
@@ -64,13 +73,38 @@ router.get(
       { expiresIn: "1d" }
     );
 
-    res.redirect(`${process.env.FRONTEND_URL}/dashboard?token=${token}`);
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 24 * 60 * 60 * 1000,
+    });
+    res.redirect(`${process.env.FRONTEND_URL}/dashboard`);
   }
 );
 
-//  Statut 
+// Statut de session
 router.get("/status", (req, res) => {
   res.json({ user: req.user || "Non connecté" });
 });
 
+// Suppression du compte connecté
+router.delete("/auth/supprimer", verifyToken, supprimerCompte);
+
 export default router;
+
+router.post("/logout", (req, res) => {
+  // Supprimer le cookie JWT
+  res.clearCookie("token", {
+    httpOnly: true,  
+    secure: process.env.NODE_ENV === "production", 
+    sameSite: "lax", 
+    maxAge: 0, 
+  });
+
+  return res.json({ message: "Déconnexion réussie" });
+});
+
+router.put("/update-password", protect, updatePassword);
+
+router.put('/update-profile', authenticate, updateUserProfile);
