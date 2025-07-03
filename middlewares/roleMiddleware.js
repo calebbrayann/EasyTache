@@ -1,4 +1,9 @@
-import prisma from "../prismaClient.js";
+import { PrismaClient } from "@prisma/client"
+
+const prisma = new PrismaClient()
+
+export default prisma
+
 export function isUser(req, res, next) {
   if (!req.user) {
     return res.status(401).json({ error: "Authentification requise." });
