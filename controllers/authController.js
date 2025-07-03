@@ -35,17 +35,24 @@ export async function register(req, res) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    await prisma.utilisateur.create({
+
+    // Création de l'utilisateur avec isActive = false (inactif)
+    const utilisateur = await prisma.utilisateur.create({
       data: {
         nomUtilisateur,
         email,
         password: hashedPassword,
         role: role || "utilisateur",
+        isActive: false,  // L'utilisateur est inactif par défaut
       },
     });
 
+    // Envoi de l'email de bienvenue avec un lien d'activation
     try {
-      await envoyerEmail("bienvenue", email, { nom: nomUtilisateur });
+      const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`; // Crée un lien d'activation
+      await envoyerEmail("bienvenue", email, { nom: nomUtilisateur, activationLink });
+      
+      // Notification à l'admin
       await envoyerEmail("nouvelleInscriptionAdmin", process.env.EMAIL_ADMIN, {
         nom: nomUtilisateur,
         email,
@@ -54,12 +61,13 @@ export async function register(req, res) {
       console.warn("Erreur lors de l'envoi des emails :", err.message);
     }
 
-    res.status(201).json({ message: "Inscription réussie !" });
+    res.status(201).json({ message: "Inscription réussie ! Un email de confirmation a été envoyé." });
   } catch (error) {
     console.error("Erreur inscription :", error);
     res.status(500).json({ error: "Erreur serveur." });
   }
 }
+
 
 // ➤ Connexion
 export async function login(req, res) {
