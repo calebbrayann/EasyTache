@@ -8,6 +8,16 @@ import { PrismaClient } from "@prisma/client";
 dotenv.config();
 const prisma = new PrismaClient();
 
+// Fonction générique pour récupérer ou créer un utilisateur via email
+const getUserByEmail = async (email) => {
+  const user = await prisma.utilisateur.findUnique({ where: { email } });
+  if (!user) {
+    // Si l'utilisateur n'existe pas, tu peux ajouter un utilisateur par défaut ou retourner une erreur
+    return null;
+  }
+  return user;
+};
+
 // ========== GOOGLE STRATEGY ==========
 passport.use(
   new GoogleStrategy(
@@ -24,7 +34,14 @@ passport.use(
 
         // Récupération de l'utilisateur final pour session
         const email = profile.emails?.[0]?.value;
-        const user = await prisma.utilisateur.findUnique({ where: { email } });
+        if (!email) {
+          return done(new Error("Email non fourni par Google"));
+        }
+
+        const user = await getUserByEmail(email);
+        if (!user) {
+          return done(new Error("Utilisateur non trouvé"));
+        }
 
         return done(null, user);
       } catch (error) {
@@ -50,7 +67,14 @@ passport.use(
 
         // Récupération de l'utilisateur final pour session
         const email = profile.emails?.[0]?.value;
-        const user = await prisma.utilisateur.findUnique({ where: { email } });
+        if (!email) {
+          return done(new Error("Email non fourni par GitHub"));
+        }
+
+        const user = await getUserByEmail(email);
+        if (!user) {
+          return done(new Error("Utilisateur non trouvé"));
+        }
 
         return done(null, user);
       } catch (error) {
@@ -63,11 +87,17 @@ passport.use(
 
 // ========== SESSION HANDLING ==========
 passport.serializeUser((user, done) => {
-  done(null, user); // Tu pourrais mettre user.id ici si tu veux alléger la session
+  done(null, user.id); // Stocker uniquement l'id dans la session
 });
 
-passport.deserializeUser((user, done) => {
-  done(null, user);
+passport.deserializeUser(async (id, done) => {
+  try {
+    const user = await prisma.utilisateur.findUnique({ where: { id } });
+    done(null, user); // Retourne l'objet utilisateur
+  } catch (error) {
+    console.error("Erreur lors de la désérialisation de l'utilisateur", error);
+    done(error, null);
+  }
 });
 
 export default passport;
