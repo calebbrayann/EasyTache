@@ -9,7 +9,13 @@ const { PrismaClient } = pkg;
 dotenv.config();
 const prisma = new PrismaClient();
 
-// ➤ Inscription
+
+// Fonction pour valider l'email avec une regex
+function validateEmail(email) {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
+}
+
 export async function register(req, res) {
   const { nomUtilisateur, email, password, confirmPassword, role } = req.body;
 
@@ -18,7 +24,7 @@ export async function register(req, res) {
     return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
-  // ➤ Email invalide
+  // ➤ Validation de l'email
   if (!validateEmail(email)) {
     return res.status(400).json({ error: "Format d'email invalide." });
   }
@@ -51,20 +57,23 @@ export async function register(req, res) {
         nomUtilisateur,
         email,
         password: hashedPassword,
-        role: role || "utilisateur",
-        isActive: true, // ou false si activation par email
+        role: role || "utilisateur",  // Rôle par défaut 'utilisateur'
+        isActive: true,  // ou false si activation par email
       },
     });
 
-    // ➤ Envoi des emails
+    // ➤ Lien d'activation (si activation par email)
     const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`;
 
+    // ➤ Envoi des emails
     try {
+      // Email de bienvenue
       await envoyerEmail("bienvenue", email, {
         nom: nomUtilisateur,
         activationLink,
       });
 
+      // Notification à l'admin
       await envoyerEmail("nouvelleInscriptionAdmin", process.env.EMAIL_ADMIN, {
         nom: nomUtilisateur,
         email,
@@ -73,10 +82,12 @@ export async function register(req, res) {
       console.warn("Échec de l'envoi des emails :", err.message);
     }
 
+    // ➤ Retourner la réponse de succès
     return res.status(201).json({
       message: "Inscription réussie ! Un email de confirmation a été envoyé.",
     });
   } catch (error) {
+    // ➤ Gestion des erreurs côté serveur
     console.error("Erreur côté serveur lors de l'inscription :", error);
     return res.status(500).json({ error: "Erreur serveur." });
   }
