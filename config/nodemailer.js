@@ -1,6 +1,5 @@
 import nodemailer from "nodemailer";
 import dotenv from "dotenv";
-import { isEmail } from "validator";  // Pour vérifier la validité de l'email
 
 dotenv.config();
 
@@ -9,11 +8,6 @@ export async function envoyerEmail(type, destinataire, options = {}) {
 
   if (!EMAIL_USER || !EMAIL_PASS) {
     throw new Error("EMAIL_USER ou EMAIL_PASS manquant dans le .env");
-  }
-
-  // Validation de l'email
-  if (!isEmail(destinataire)) {
-    throw new Error("Adresse email du destinataire invalide");
   }
 
   const transporter = nodemailer.createTransport({
@@ -90,6 +84,6 @@ export async function envoyerEmail(type, destinataire, options = {}) {
     console.log(`[EMAIL] ${type} envoyé à ${destinataire} (ID: ${info.messageId})`);
   } catch (error) {
     console.error(`[EMAIL] Erreur ${type} :`, error.message);
-    throw new Error(`Erreur lors de l'envoi de l'e-mail pour ${type}: ${error.message}`);
+    throw new Error("Erreur lors de l'envoi de l'e-mail");
   }
 }
