@@ -12,6 +12,7 @@ import {
   updateUserProfile,
 } from "../controllers/authController.js"
 import { verifierToken } from "../middlewares/authMiddleware.js"
+import { activate } from "../controllers/authController.js"; 
 
 const authRouter = Router()
 
@@ -91,3 +92,4 @@ authRouter.post("/logout", (req, res) => {
 })
 
 export default authRouter
+

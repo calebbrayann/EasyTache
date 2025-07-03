@@ -27,6 +27,7 @@ async function main() {
         email,
         password: hashedPassword,
         role: "administrateur",
+        isActive: true,  // Activer l'utilisateur dès la création
       },
     });
 

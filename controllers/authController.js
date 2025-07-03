@@ -11,60 +11,74 @@ const prisma = new PrismaClient();
 
 // ➤ Inscription
 export async function register(req, res) {
-  const { nomUtilisateur, email, password, role } = req.body;
-  if (!nomUtilisateur || !email || !password) {
+  const { nomUtilisateur, email, password, confirmPassword, role } = req.body;
+
+  // ➤ Vérification des champs obligatoires
+  if (!nomUtilisateur || !email || !password || !confirmPassword) {
     return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
-  // Validation de l'email
+  // ➤ Email invalide
   if (!validateEmail(email)) {
-    return res.status(400).json({ error: "Email invalide." });
+    return res.status(400).json({ error: "Format d'email invalide." });
+  }
+
+  // ➤ Les deux mots de passe doivent être identiques
+  if (password !== confirmPassword) {
+    return res.status(400).json({ error: "Les mots de passe ne correspondent pas." });
+  }
+
+  // ➤ Optionnel : politique de mot de passe plus stricte
+  if (password.length < 8 || !/\d/.test(password)) {
+    return res.status(400).json({
+      error: "Le mot de passe doit contenir au moins 8 caractères et un chiffre.",
+    });
   }
 
   try {
-    const utilisateurExistant = await prisma.utilisateur.findUnique({
-      where: { email },
-    });
+    // ➤ Vérifier si l’utilisateur existe déjà
+    const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { email } });
     if (utilisateurExistant) {
       return res.status(400).json({ error: "Cet email est déjà utilisé." });
     }
 
-    // Vérification de la longueur du mot de passe
-    if (password.length < 8) {
-      return res.status(400).json({ error: "Le mot de passe doit comporter au moins 8 caractères." });
-    }
-
+    // ➤ Hasher le mot de passe
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Création de l'utilisateur avec isActive = false (inactif)
+    // ➤ Créer l’utilisateur
     const utilisateur = await prisma.utilisateur.create({
       data: {
         nomUtilisateur,
         email,
         password: hashedPassword,
         role: role || "utilisateur",
-        isActive: false,  // L'utilisateur est inactif par défaut
+        isActive: true, // ou false si activation par email
       },
     });
 
-    // Envoi de l'email de bienvenue avec un lien d'activation
+    // ➤ Envoi des emails
+    const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`;
+
     try {
-      const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`; // Crée un lien d'activation
-      await envoyerEmail("bienvenue", email, { nom: nomUtilisateur, activationLink });
-      
-      // Notification à l'admin
+      await envoyerEmail("bienvenue", email, {
+        nom: nomUtilisateur,
+        activationLink,
+      });
+
       await envoyerEmail("nouvelleInscriptionAdmin", process.env.EMAIL_ADMIN, {
         nom: nomUtilisateur,
         email,
       });
     } catch (err) {
-      console.warn("Erreur lors de l'envoi des emails :", err.message);
+      console.warn("Échec de l'envoi des emails :", err.message);
     }
 
-    res.status(201).json({ message: "Inscription réussie ! Un email de confirmation a été envoyé." });
+    return res.status(201).json({
+      message: "Inscription réussie ! Un email de confirmation a été envoyé.",
+    });
   } catch (error) {
-    console.error("Erreur inscription :", error);
-    res.status(500).json({ error: "Erreur serveur." });
+    console.error("Erreur côté serveur lors de l'inscription :", error);
+    return res.status(500).json({ error: "Erreur serveur." });
   }
 }
 
@@ -410,3 +424,6 @@ export const updateUserProfile = async (req, res) => {
     return res.status(500).json({ error: 'Erreur interne du serveur' });
   }
 };
+
+
+  
