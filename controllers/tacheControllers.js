@@ -56,19 +56,19 @@ export async function listerTaches(req, res) {
 
   if (!userId) return res.status(401).json({ error: "Accès non autorisé." });
 
-  const { priorite, statut, dateEcheance } = req.query;
+  const { priorite, statut, dateEcheance, bloquee } = req.query; // Ajout du paramètre bloquee
 
-const filtreBase =
-  role === "administrateur"
-    ? {} // Pas de filtre, admin voit toutes les tâches
-    : { userId, bloquee: false }; // Utilisateur normal : ses tâches non bloquées
-
+  const filtreBase =
+    role === "administrateur"
+      ? {} // Pas de filtre, admin voit toutes les tâches
+      : { userId, bloquee: false }; // Utilisateur normal : ses tâches non bloquées
 
   const filtre = {
     ...filtreBase,
     ...(priorite && { priorite }),
     ...(statut && { statut }),
     ...(dateEcheance && { dateEcheance: new Date(dateEcheance) }),
+    ...(bloquee !== undefined && { bloquee: bloquee === "true" }), // Filtrage par "bloquee"
   };
 
   try {
@@ -198,3 +198,22 @@ export async function supprimerTache(req, res) {
     res.status(500).json({ error: "Erreur serveur lors de la suppression." });
   }
 }
+
+export const getTacheById = async (req, res) => {
+  const { id } = req.params;  // Récupérer l'ID depuis les paramètres de la requête
+
+  try {
+    // Recherche de la tâche par son ID
+    const tache = await Tache.findOne({ where: { id } });
+
+    if (!tache) {
+      return res.status(404).json({ error: 'Tâche non trouvée' });
+    }
+
+    // Retourner la tâche trouvée
+    return res.status(200).json(tache);
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: 'Erreur serveur' });
+  }
+};
