@@ -16,142 +16,122 @@ function validateEmail(email) {
   return re.test(String(email).toLowerCase());
 }
 
+
 export async function register(req, res) {
-  const { nomUtilisateur, email, password, confirmPassword, role } = req.body;
+  const { nomUtilisateur, email, password, confirmPassword, role } = req.body
 
-  // ➤ Vérification des champs obligatoires
   if (!nomUtilisateur || !email || !password || !confirmPassword) {
-    return res.status(400).json({ error: "Tous les champs sont requis." });
+    return res.status(400).json({ error: "Tous les champs sont requis." })
   }
 
-  // ➤ Validation de l'email
   if (!validateEmail(email)) {
-    return res.status(400).json({ error: "Format d'email invalide." });
+    return res.status(400).json({ error: "Format d'email invalide." })
   }
 
-  // ➤ Les deux mots de passe doivent être identiques
   if (password !== confirmPassword) {
-    return res.status(400).json({ error: "Les mots de passe ne correspondent pas." });
+    return res.status(400).json({ error: "Les mots de passe ne correspondent pas." })
   }
 
-  // ➤ Optionnel : politique de mot de passe plus stricte
   if (password.length < 8 || !/\d/.test(password)) {
     return res.status(400).json({
       error: "Le mot de passe doit contenir au moins 8 caractères et un chiffre.",
-    });
+    })
   }
 
   try {
-    // ➤ Vérifier si l’utilisateur existe déjà
-    const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { email } });
+    const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { email } })
     if (utilisateurExistant) {
-      return res.status(400).json({ error: "Cet email est déjà utilisé." });
+      return res.status(400).json({ error: "Cet email est déjà utilisé." })
     }
 
-    // ➤ Hasher le mot de passe
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10)
 
-    // ➤ Créer l’utilisateur
     const utilisateur = await prisma.utilisateur.create({
       data: {
         nomUtilisateur,
         email,
         password: hashedPassword,
-        role: role || "utilisateur",  // Rôle par défaut 'utilisateur'
-        isActive: true,  // ou false si activation par email
+        role: role || "utilisateur",
+        isActive: true,
       },
-    });
+    })
 
-    // ➤ Lien d'activation (si activation par email)
-    const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`;
+    const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`
 
-    // ➤ Envoi des emails
     try {
-      // Email de bienvenue
       await envoyerEmail("bienvenue", email, {
         nom: nomUtilisateur,
         activationLink,
-      });
+      })
 
-      // Notification à l'admin
       await envoyerEmail("nouvelleInscriptionAdmin", process.env.EMAIL_ADMIN, {
         nom: nomUtilisateur,
         email,
-      });
+      })
     } catch (err) {
-      console.warn("Échec de l'envoi des emails :", err.message);
+      console.warn("Échec de l'envoi des emails :", err.message)
     }
 
-    // ➤ Retourner la réponse de succès
     return res.status(201).json({
       message: "Inscription réussie ! Un email de confirmation a été envoyé.",
-    });
+    })
   } catch (error) {
-    // ➤ Gestion des erreurs côté serveur
-    console.error("Erreur côté serveur lors de l'inscription :", error);
-    return res.status(500).json({ error: "Erreur serveur." });
+    console.error("Erreur côté serveur lors de l'inscription :", error)
+    return res.status(500).json({ error: "Erreur serveur." })
   }
 }
 
-
-// ➤ Connexion
 export async function login(req, res) {
-  const { email, password } = req.body;
+  const { email, password } = req.body
 
   try {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { email },
-    });
+    })
 
-    // Vérifier si l'utilisateur existe et s'il est activé
     if (!utilisateur || !(await bcrypt.compare(password, utilisateur.password))) {
-      return res.status(401).json({ error: "Identifiants incorrects." });
+      return res.status(401).json({ error: "Identifiants incorrects." })
     }
 
-    // Vérifier si l'utilisateur est activé
     if (!utilisateur.isActive) {
-      return res.status(401).json({ error: "Votre compte n'est pas activé." });
+      return res.status(401).json({ error: "Votre compte n'est pas activé." })
     }
 
-    // Générer le token JWT
     const token = jwt.sign(
       { userId: utilisateur.id, role: utilisateur.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
-    );
+    )
 
-    // Envoyer le token dans un cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",  // Assure que le cookie est sécurisé en production
-      sameSite: "Strict",  // Option plus sécurisée
-      maxAge: 24 * 60 * 60 * 1000, // 1 jour
-    });
+      secure: true, // 
+      sameSite: "None", 
+      maxAge: 24 * 60 * 60 * 1000,
+    })
 
-    return res.json({ message: "Connexion réussie." });
+    return res.json({ message: "Connexion réussie." })
   } catch (error) {
-    console.error("Erreur connexion :", error);
-    return res.status(500).json({ error: "Erreur serveur." });
+    console.error("Erreur connexion :", error)
+    return res.status(500).json({ error: "Erreur serveur." })
   }
 }
 
-
-// ➤ Statut de session
 export async function getStatus(req, res) {
   try {
-    const token = req.cookies?.token;
+    const token = req.cookies?.token
     if (!token) {
-      return res.status(401).json({ connecté: false });
+      return res.status(401).json({ connecté: false })
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
     res.json({
       connecté: true,
       userId: decoded.userId,
       role: decoded.role,
-    });
+    })
   } catch (error) {
-    res.status(401).json({ connecté: false });
+    res.status(401).json({ connecté: false })
   }
 }
 
