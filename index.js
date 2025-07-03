@@ -20,6 +20,9 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
+app.set("trust proxy", 1)
+
+
 // Middleware CORS
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
