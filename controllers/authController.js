@@ -69,29 +69,39 @@ export async function login(req, res) {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { email },
     });
+
+    // Vérifier si l'utilisateur existe et s'il est activé
     if (!utilisateur || !(await bcrypt.compare(password, utilisateur.password))) {
       return res.status(401).json({ error: "Identifiants incorrects." });
     }
 
+    // Vérifier si l'utilisateur est activé
+    if (!utilisateur.isActive) {
+      return res.status(401).json({ error: "Votre compte n'est pas activé." });
+    }
+
+    // Générer le token JWT
     const token = jwt.sign(
       { userId: utilisateur.id, role: utilisateur.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
+    // Envoyer le token dans un cookie
     res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: process.env.NODE_ENV === "production",  // Assure que le cookie est sécurisé en production
       sameSite: "Strict",  // Option plus sécurisée
-      maxAge: 24 * 60 * 60 * 1000,
+      maxAge: 24 * 60 * 60 * 1000, // 1 jour
     });
 
-    res.json({ message: "Connexion réussie." });
+    return res.json({ message: "Connexion réussie." });
   } catch (error) {
     console.error("Erreur connexion :", error);
-    res.status(500).json({ error: "Erreur serveur." });
+    return res.status(500).json({ error: "Erreur serveur." });
   }
 }
+
 
 // ➤ Statut de session
 export async function getStatus(req, res) {
