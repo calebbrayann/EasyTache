@@ -1,23 +1,18 @@
-import { Router } from "express";
-import { authMiddleware, authAdminMiddleware } from "../middlewares/authMiddleware.js";
-import { getAllUtilisateurs, updateUserRole } from "../controllers/authController.js";
+// routes/adminRoutes.js
+import { Router } from "express"
+import { verifierToken as authMiddleware, authAdminMiddleware } from "../middlewares/authMiddleware.js"
+import { getAllUtilisateurs, updateUserRole } from "../controllers/authController.js"
 
-const router = Router();
+const adminRouter = Router()
 
-// Routes nécessitant une authentification, mais pas forcément un rôle admin
-router.use(authMiddleware);  // Pour toutes les routes qui nécessitent l'authentification
+adminRouter.use(authMiddleware)
+adminRouter.use("/utilisateurs", authAdminMiddleware)
 
-// Routes nécessitant un rôle admin
-router.use("/utilisateurs", authAdminMiddleware);  // Seulement pour les routes d'administration
+adminRouter.get("/dashboard", (req, res) => {
+  res.json({ message: "Statistiques admin" })
+})
 
-router.get("/dashboard", (req, res) => {
-  res.json({ message: "Statistiques admin" });
-});
+adminRouter.get("/utilisateurs", getAllUtilisateurs)
+adminRouter.put("/utilisateurs/:id/role", updateUserRole)
 
-// Récupération de tous les utilisateurs (accès admin)
-router.get("/utilisateurs", getAllUtilisateurs);
-
-// Mise à jour du rôle d'un utilisateur (accès admin)
-router.put("/utilisateurs/:id/role", updateUserRole);
-
-export default router;
+export default adminRouter
