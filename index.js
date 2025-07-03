@@ -20,16 +20,18 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
+// Middleware CORS
 app.use(cors({
   origin: process.env.FRONTEND_URL || "http://localhost:3000",
   credentials: true,
 }));
 
+// Middleware BodyParser et CookieParser
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(helmet());
 
-// Limite les requêtes (100 requêtes max / 15 min)
+// Limitation des requêtes pour éviter les attaques par brute force
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 100,
@@ -37,17 +39,17 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Sessions pour passport
+// Middleware Session pour passport
 app.use(session({
   secret: process.env.SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
 }));
 
-// Middleware CSRF initialisé
+// Middleware CSRF
 const csrfProtection = csrf({ cookie: true });
 
-// IMPORTANT : on exclut CSRF sur les routes API JSON et d’authentification
+// Exclusion des routes sensibles
 app.use((req, res, next) => {
   if (req.path.startsWith("/api/auth") || req.is("application/json")) {
     return next();
@@ -55,7 +57,7 @@ app.use((req, res, next) => {
   csrfProtection(req, res, next);
 });
 
-// Authentification
+// Initialisation de Passport pour l'authentification
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -64,7 +66,7 @@ app.use("/api/auth", Routesauth);
 app.use("/api/taches", Routestaches);
 app.use("/api/admin", adminRoutes);
 
-// Route pour exposer le token CSRF (utile si frontend web)
+// Route pour exposer le token CSRF (utile pour le frontend)
 app.get("/csrf-token", (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
@@ -74,13 +76,13 @@ app.get("/", (req, res) => {
   res.send("Bienvenue sur mon API sécurisée de gestion de tâches !");
 });
 
-// Connexion Prisma
+// Connexion à Prisma
 prisma
   .$connect()
   .then(() => console.log("Prisma connecté"))
   .catch((error) => console.error("Erreur Prisma :", error));
 
-// Test SMTP (optionnel)
+// Test SMTP (vérification de la connexion)
 async function testSMTP() {
   const transporter = nodemailer.createTransport({
     service: "gmail",
@@ -99,12 +101,12 @@ async function testSMTP() {
 }
 testSMTP();
 
-// Lancement serveur
+// Lancement du serveur
 app.listen(PORT, () => {
   console.log(`Serveur lancé sur http://localhost:${PORT}`);
 });
 
-// Déconnexion Prisma à la fermeture
+// Déconnexion propre de Prisma à la fermeture
 process.on("exit", async () => {
   await prisma.$disconnect();
   console.log("Prisma déconnecté proprement.");

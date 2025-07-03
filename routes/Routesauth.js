@@ -6,7 +6,9 @@ import {
   login,
   demandeResetPassword,
   resetPassword,
-  supprimerCompte 
+  supprimerCompte,
+  updatePassword,
+  updateUserProfile,
 } from "../controllers/authController.js";
 
 import { verifierToken } from "../middlewares/authMiddleware.js"; // ← middleware pour sécuriser la suppression
@@ -89,22 +91,25 @@ router.get("/status", (req, res) => {
 });
 
 // Suppression du compte connecté
-router.delete("/auth/supprimer", verifyToken, supprimerCompte);
+router.delete("/auth/supprimer", verifierToken, supprimerCompte);
 
-export default router;
-
+// Déconnexion
 router.post("/logout", (req, res) => {
   // Supprimer le cookie JWT
   res.clearCookie("token", {
-    httpOnly: true,  
+    httpOnly: true,
     secure: process.env.NODE_ENV === "production", 
-    sameSite: "lax", 
-    maxAge: 0, 
+    sameSite: "lax",
+    maxAge: 0,
   });
 
   return res.json({ message: "Déconnexion réussie" });
 });
 
-router.put("/update-password", protect, updatePassword);
+// Mise à jour du mot de passe
+router.put("/update-password", verifierToken, updatePassword);
 
-router.put('/update-profile', authenticate, updateUserProfile);
+// Mise à jour du profil utilisateur
+router.put('/update-profile', verifierToken, updateUserProfile);
+
+export default router;

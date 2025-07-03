@@ -1,11 +1,16 @@
 import pkg from "@prisma/client";
-import sanitizeHtml from "sanitize-html"; // ← Protection XSS
+import sanitizeHtml from "sanitize-html"; // Protection XSS
 const { PrismaClient } = pkg;
 
 const prisma = new PrismaClient();
 
 // Liste de mots dangereux pour bloquer certaines tâches
 const motsDangereux = ["violence", "piratage", "fraude", "danger"];
+
+// Fonction de nettoyage XSS
+function nettoyerTexte(texte) {
+  return sanitizeHtml(texte, { allowedTags: [], allowedAttributes: {} });
+}
 
 // Création d'une tâche (l'utilisateur choisit sa priorité)
 export async function creerTache(req, res) {
@@ -17,8 +22,8 @@ export async function creerTache(req, res) {
   }
 
   // Nettoyage XSS
-  const titreNettoye = sanitizeHtml(titre, { allowedTags: [], allowedAttributes: {} });
-  const descriptionNettoyee = sanitizeHtml(description, { allowedTags: [], allowedAttributes: {} });
+  const titreNettoye = nettoyerTexte(titre);
+  const descriptionNettoyee = nettoyerTexte(description);
 
   const contientMotDangereux = motsDangereux.some((mot) =>
     descriptionNettoyee?.includes(mot)
@@ -45,7 +50,7 @@ export async function creerTache(req, res) {
     res.status(201).json(nouvelleTache);
   } catch (error) {
     console.error("Erreur création tâche :", error);
-    res.status(500).json({ error: "Erreur serveur, veuillez réessayer." });
+    res.status(500).json({ error: "Erreur serveur lors de la création de la tâche." });
   }
 }
 
@@ -56,7 +61,7 @@ export async function listerTaches(req, res) {
 
   if (!userId) return res.status(401).json({ error: "Accès non autorisé." });
 
-  const { priorite, statut, dateEcheance, bloquee } = req.query; // Ajout du paramètre bloquee
+  const { priorite, statut, dateEcheance, bloquee } = req.query;
 
   const filtreBase =
     role === "administrateur"
@@ -153,8 +158,8 @@ export async function modifierTache(req, res) {
     }
 
     // Nettoyage XSS uniquement sur les champs texte
-    const titreNettoye = titre ? sanitizeHtml(titre, { allowedTags: [], allowedAttributes: {} }) : undefined;
-    const descriptionNettoyee = description ? sanitizeHtml(description, { allowedTags: [], allowedAttributes: {} }) : undefined;
+    const titreNettoye = titre ? nettoyerTexte(titre) : undefined;
+    const descriptionNettoyee = description ? nettoyerTexte(description) : undefined;
 
     const tacheModifiee = await prisma.tache.update({
       where: { id: parseInt(id) },
@@ -199,21 +204,20 @@ export async function supprimerTache(req, res) {
   }
 }
 
+// Récupérer une tâche par ID
 export const getTacheById = async (req, res) => {
-  const { id } = req.params;  // Récupérer l'ID depuis les paramètres de la requête
+  const { id } = req.params; 
 
   try {
-    // Recherche de la tâche par son ID
-    const tache = await Tache.findOne({ where: { id } });
+    const tache = await prisma.tache.findUnique({ where: { id: Number(id) } });
 
     if (!tache) {
-      return res.status(404).json({ error: 'Tâche non trouvée' });
+      return res.status(404).json({ error: "Tâche non trouvée" });
     }
 
-    // Retourner la tâche trouvée
     return res.status(200).json(tache);
   } catch (error) {
     console.error(error);
-    return res.status(500).json({ error: 'Erreur serveur' });
+    return res.status(500).json({ error: "Erreur serveur" });
   }
 };

@@ -16,12 +16,22 @@ export async function register(req, res) {
     return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
+  // Validation de l'email
+  if (!validateEmail(email)) {
+    return res.status(400).json({ error: "Email invalide." });
+  }
+
   try {
     const utilisateurExistant = await prisma.utilisateur.findUnique({
       where: { email },
     });
     if (utilisateurExistant) {
       return res.status(400).json({ error: "Cet email est déjà utilisé." });
+    }
+
+    // Vérification de la longueur du mot de passe
+    if (password.length < 8) {
+      return res.status(400).json({ error: "Le mot de passe doit comporter au moins 8 caractères." });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -72,7 +82,7 @@ export async function login(req, res) {
     res.cookie("token", token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
+      sameSite: "Strict",  // Option plus sécurisée
       maxAge: 24 * 60 * 60 * 1000,
     });
 
@@ -157,7 +167,7 @@ export async function resetPassword(req, res) {
   const { newPassword } = req.body;
 
   try {
-    const user = await prisma.utilisateur.findFirst({ where: { resetToken } });
+    const user = await prisma.utilisateur.findUnique({ where: { resetToken } });
 
     if (!user || !user.resetTokenExp || user.resetTokenExp < new Date()) {
       return res.status(400).json({ error: "Token invalide ou expiré." });
@@ -277,6 +287,11 @@ export async function updateUserRole(req, res) {
     return res.status(400).json({ error: "Rôle invalide." });
   }
 
+  // Vérification du rôle de l'utilisateur connecté
+  if (req.user.role !== 'administrateur') {
+    return res.status(403).json({ error: 'Accès interdit' });
+  }
+
   try {
     await prisma.utilisateur.update({
       where: { id },
@@ -290,6 +305,7 @@ export async function updateUserRole(req, res) {
   }
 }
 
+// ➤ Mise à jour du mot de passe
 export async function updatePassword(req, res) {
   const { currentPassword, newPassword } = req.body;
   const userId = req.user?.userId; // Assurer que l'utilisateur est connecté
@@ -337,6 +353,7 @@ export async function updatePassword(req, res) {
   }
 }
 
+// ➤ Mise à jour du profil utilisateur
 export const updateUserProfile = async (req, res) => {
   const { name, email } = req.body;
 
@@ -360,7 +377,7 @@ export const updateUserProfile = async (req, res) => {
 
   try {
     // Mettre à jour les informations dans la base de données
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.utilisateur.update({
       where: { id: req.user.id },  // Suppose que req.user.id contient l'ID de l'utilisateur authentifié
       data: {
         name,
