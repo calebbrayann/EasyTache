@@ -9,42 +9,49 @@ const { PrismaClient } = pkg;
 dotenv.config();
 const prisma = new PrismaClient();
 
-
 // Fonction pour valider l'email avec une regex
 function validateEmail(email) {
   const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return re.test(String(email).toLowerCase());
 }
 
+function validateName(name) {
+  return typeof name === "string" && name.trim().length >= 2;
+}
 
 export async function register(req, res) {
-  const { nomUtilisateur, email, password, confirmPassword, role } = req.body
+  const { nomUtilisateur, email, password, confirmPassword, role } = req.body;
 
   if (!nomUtilisateur || !email || !password || !confirmPassword) {
-    return res.status(400).json({ error: "Tous les champs sont requis." })
+    return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
   if (!validateEmail(email)) {
-    return res.status(400).json({ error: "Format d'email invalide." })
+    return res.status(400).json({ error: "Format d'email invalide." });
   }
 
   if (password !== confirmPassword) {
-    return res.status(400).json({ error: "Les mots de passe ne correspondent pas." })
+    return res
+      .status(400)
+      .json({ error: "Les mots de passe ne correspondent pas." });
   }
 
   if (password.length < 8 || !/\d/.test(password)) {
     return res.status(400).json({
-      error: "Le mot de passe doit contenir au moins 8 caractères et un chiffre.",
-    })
+      error:
+        "Le mot de passe doit contenir au moins 8 caractères et un chiffre.",
+    });
   }
 
   try {
-    const utilisateurExistant = await prisma.utilisateur.findUnique({ where: { email } })
+    const utilisateurExistant = await prisma.utilisateur.findUnique({
+      where: { email },
+    });
     if (utilisateurExistant) {
-      return res.status(400).json({ error: "Cet email est déjà utilisé." })
+      return res.status(400).json({ error: "Cet email est déjà utilisé." });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10)
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const utilisateur = await prisma.utilisateur.create({
       data: {
@@ -54,84 +61,91 @@ export async function register(req, res) {
         role: role || "utilisateur",
         isActive: true,
       },
-    })
+    });
 
-    const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`
+    const activationLink = `${process.env.BASE_URL}/api/auth/activate/${utilisateur.id}`;
 
     try {
       await envoyerEmail("bienvenue", email, {
         nom: nomUtilisateur,
         activationLink,
-      })
+      });
 
       await envoyerEmail("nouvelleInscriptionAdmin", process.env.EMAIL_ADMIN, {
         nom: nomUtilisateur,
         email,
-      })
+      });
     } catch (err) {
-      console.warn("Échec de l'envoi des emails :", err.message)
+      console.warn("Échec de l'envoi des emails :", err.message);
     }
 
     return res.status(201).json({
       message: "Inscription réussie ! Un email de confirmation a été envoyé.",
-    })
+    });
   } catch (error) {
-    console.error("Erreur côté serveur lors de l'inscription :", error)
-    return res.status(500).json({ error: "Erreur serveur." })
+    console.error("Erreur côté serveur lors de l'inscription :", error);
+    return res.status(500).json({ error: "Erreur serveur." });
   }
 }
 
 export async function login(req, res) {
-  const { email, password } = req.body
+  const { email, password } = req.body;
 
   try {
     const utilisateur = await prisma.utilisateur.findUnique({
       where: { email },
-    })
+    });
 
-    if (!utilisateur || !(await bcrypt.compare(password, utilisateur.password))) {
-      return res.status(401).json({ error: "Identifiants incorrects." })
+    if (
+      !utilisateur ||
+      !(await bcrypt.compare(password, utilisateur.password))
+    ) {
+      return res.status(401).json({ error: "Identifiants incorrects." });
     }
 
     if (!utilisateur.isActive) {
-      return res.status(401).json({ error: "Votre compte n'est pas activé." })
+      return res.status(401).json({ error: "Votre compte n'est pas activé." });
     }
 
     const token = jwt.sign(
       { userId: utilisateur.id, role: utilisateur.role },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
-    )
+    );
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: true, // 
-      sameSite: "None", 
+      secure: false, //
+      sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
-    })
+    });
 
-    return res.json({ message: "Connexion réussie." })
+    return res.json({ message: "Connexion réussie." });
   } catch (error) {
-    console.error("Erreur connexion :", error)
-    return res.status(500).json({ error: "Erreur serveur." })
+    console.error("Erreur connexion :", error);
+    return res.status(500).json({ error: "Erreur serveur." });
   }
 }
 
 export async function getStatus(req, res) {
-  try {
-    const token = req.cookies?.token
-    if (!token) {
-      return res.status(401).json({ connecté: false })
-    }
+  console.log("Cookies reçus :", req.cookies);
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    res.json({
+  const token = req.cookies?.token;
+
+  if (!token) {
+    return res.status(401).json({ connecté: false, message: "Token manquant" });
+  }
+
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return res.json({
       connecté: true,
       userId: decoded.userId,
       role: decoded.role,
-    })
+    });
   } catch (error) {
-    res.status(401).json({ connecté: false })
+    console.error("Erreur de vérification du token :", error.message);
+    return res.status(401).json({ connecté: false, message: "Token invalide" });
   }
 }
 
@@ -140,7 +154,9 @@ export async function supprimerCompte(req, res) {
   const userId = req.user?.userId;
 
   if (!userId) {
-    return res.status(401).json({ error: "Non autorisé. Jeton manquant ou invalide." });
+    return res
+      .status(401)
+      .json({ error: "Non autorisé. Jeton manquant ou invalide." });
   }
 
   try {
@@ -151,7 +167,9 @@ export async function supprimerCompte(req, res) {
     res.json({ message: "Compte supprimé avec succès." });
   } catch (error) {
     console.error("Erreur suppression compte :", error);
-    res.status(500).json({ error: "Erreur serveur lors de la suppression du compte." });
+    res
+      .status(500)
+      .json({ error: "Erreur serveur lors de la suppression du compte." });
   }
 }
 
@@ -219,7 +237,9 @@ export async function saveGoogleUser(userData) {
   if (!email) return;
 
   try {
-    const existingUser = await prisma.utilisateur.findUnique({ where: { email } });
+    const existingUser = await prisma.utilisateur.findUnique({
+      where: { email },
+    });
 
     if (!existingUser) {
       const newUser = await prisma.utilisateur.create({
@@ -229,6 +249,7 @@ export async function saveGoogleUser(userData) {
           password: crypto.randomBytes(16).toString("hex"),
           provider: "google",
           role: "utilisateur",
+          isActive: true, // Activer par défaut
         },
       });
 
@@ -247,7 +268,9 @@ export async function saveGitHubUser(userData) {
   if (!email) return;
 
   try {
-    const existingUser = await prisma.utilisateur.findUnique({ where: { email } });
+    const existingUser = await prisma.utilisateur.findUnique({
+      where: { email },
+    });
 
     if (!existingUser) {
       const newUser = await prisma.utilisateur.create({
@@ -257,6 +280,7 @@ export async function saveGitHubUser(userData) {
           password: crypto.randomBytes(16).toString("hex"),
           provider: "github",
           role: "utilisateur",
+          isActive: true, // Activer par défaut
         },
       });
 
@@ -278,9 +302,11 @@ export async function getAllUtilisateurs(req, res) {
       },
     });
 
-    const result = utilisateurs.map(user => {
+    const result = utilisateurs.map((user) => {
       const tasksCount = user.taches.length;
-      const completedTasks = user.taches.filter(t => t.statut === "terminé").length;
+      const completedTasks = user.taches.filter(
+        (t) => t.statut === "terminé"
+      ).length;
 
       return {
         id: user.id,
@@ -301,27 +327,37 @@ export async function getAllUtilisateurs(req, res) {
   }
 }
 
-// ➤ Mise à jour du rôle d'un utilisateur (admin only)
 export async function updateUserRole(req, res) {
   const { id } = req.params;
   const { role } = req.body;
 
+  // Vérifie que le rôle est valide
   if (!["administrateur", "utilisateur"].includes(role)) {
     return res.status(400).json({ error: "Rôle invalide." });
   }
 
-  // Vérification du rôle de l'utilisateur connecté
-  if (req.user.role !== 'administrateur') {
-    return res.status(403).json({ error: 'Accès interdit' });
+  // Vérifie que l'utilisateur connecté est un admin
+  if (req.user.role !== "administrateur") {
+    return res.status(403).json({ error: "Accès interdit" });
   }
 
   try {
-    await prisma.utilisateur.update({
-      where: { id },
+    // Conversion de l'ID en nombre, car Prisma attend un entier
+    const userId = Number(id);
+
+    if (isNaN(userId)) {
+      return res.status(400).json({ error: "ID invalide." });
+    }
+
+    const updatedUser = await prisma.utilisateur.update({
+      where: { id: userId },
       data: { role },
     });
 
-    res.json({ message: "Rôle mis à jour avec succès." });
+    res.json({
+      message: "Rôle mis à jour avec succès.",
+      utilisateur: updatedUser,
+    });
   } catch (error) {
     console.error("Erreur mise à jour rôle :", error);
     res.status(500).json({ error: "Erreur serveur." });
@@ -338,7 +374,9 @@ export async function updatePassword(req, res) {
   }
 
   if (!currentPassword || !newPassword) {
-    return res.status(400).json({ error: "Les deux mots de passe sont nécessaires." });
+    return res
+      .status(400)
+      .json({ error: "Les deux mots de passe sont nécessaires." });
   }
 
   try {
@@ -357,7 +395,9 @@ export async function updatePassword(req, res) {
 
     // Vérifier que le nouveau mot de passe est valide
     if (newPassword.length < 8) {
-      return res.status(400).json({ error: "Le mot de passe doit contenir au moins 8 caractères." });
+      return res.status(400).json({
+        error: "Le mot de passe doit contenir au moins 8 caractères.",
+      });
     }
 
     // Hacher le nouveau mot de passe avant de le sauvegarder
@@ -372,57 +412,56 @@ export async function updatePassword(req, res) {
     res.json({ message: "Mot de passe mis à jour avec succès." });
   } catch (error) {
     console.error("Erreur lors de la mise à jour du mot de passe :", error);
-    res.status(500).json({ error: "Erreur serveur lors de la mise à jour du mot de passe." });
+    res.status(500).json({
+      error: "Erreur serveur lors de la mise à jour du mot de passe.",
+    });
   }
 }
 
-// ➤ Mise à jour du profil utilisateur
 export const updateUserProfile = async (req, res) => {
-  const { name, email } = req.body;
+  const { nomUtilisateur, email } = req.body;
 
-  // Vérifie que l'utilisateur est authentifié
   if (!req.user) {
-    return res.status(401).json({ error: 'Non autorisé' });
+    return res.status(401).json({ error: "Non autorisé" });
   }
 
-  // Validation des données
-  if (!name || !email) {
-    return res.status(400).json({ error: 'Nom et email sont requis' });
+  if (!nomUtilisateur || !email) {
+    return res.status(400).json({ error: "Nom et email sont requis" });
   }
 
   if (!validateEmail(email)) {
-    return res.status(400).json({ error: 'Email invalide' });
+    return res.status(400).json({ error: "Email invalide" });
   }
 
-  if (!validateName(name)) {
-    return res.status(400).json({ error: 'Nom invalide' });
+  // Si tu veux valider le nom, change ici pour nomUtilisateur
+  if (typeof validateName === "function" && !validateName(nomUtilisateur)) {
+    return res.status(400).json({ error: "Nom invalide" });
   }
 
   try {
-    // Mettre à jour les informations dans la base de données
     const updatedUser = await prisma.utilisateur.update({
-      where: { id: req.user.id },  // Suppose que req.user.id contient l'ID de l'utilisateur authentifié
+      where: { id: req.user.userId }, //
       data: {
-        name,
-        email
-      }
+        nomUtilisateur,
+        email,
+      },
     });
 
-    // Répondre avec l'utilisateur mis à jour
     return res.status(200).json(updatedUser);
   } catch (error) {
-    console.error('Erreur lors de la mise à jour du profil :', error);
-    return res.status(500).json({ error: 'Erreur interne du serveur' });
+    console.error("Erreur lors de la mise à jour du profil :", error);
+    return res.status(500).json({ error: "Erreur serveur" });
   }
 };
 
-
-  // ➤ Activation du compte
+// ➤ Activation du compte
 export async function activer(req, res) {
   const { id } = req.params;
 
   try {
-    const utilisateur = await prisma.utilisateur.findUnique({ where: { id: Number(id) } });
+    const utilisateur = await prisma.utilisateur.findUnique({
+      where: { id: Number(id) },
+    });
 
     if (!utilisateur) {
       return res.status(404).json({ error: "Utilisateur introuvable." });
@@ -437,9 +476,14 @@ export async function activer(req, res) {
       data: { isActive: true },
     });
 
-    res.json({ message: "Votre compte a bien été activé. Vous pouvez maintenant vous connecter !" });
+    res.json({
+      message:
+        "Votre compte a bien été activé. Vous pouvez maintenant vous connecter !",
+    });
   } catch (error) {
     console.error("Erreur lors de l'activation du compte :", error);
-    res.status(500).json({ error: "Une erreur est survenue pendant l'activation." });
+    res
+      .status(500)
+      .json({ error: "Une erreur est survenue pendant l'activation." });
   }
 }

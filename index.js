@@ -13,6 +13,7 @@ import session from "express-session";
 import passport from "./config/passport.js";
 import pkg from "@prisma/client";
 import cors from "cors";
+
 const { PrismaClient } = pkg;
 
 dotenv.config();
@@ -20,14 +21,15 @@ const app = express();
 const prisma = new PrismaClient();
 const PORT = process.env.PORT || 3000;
 
-app.set("trust proxy", 1)
-
+app.set("trust proxy", 1);
 
 // Middleware CORS
-app.use(cors({
-  origin: process.env.FRONTEND_URL || "http://localhost:3000",
-  credentials: true,
-}));
+app.use(
+  cors({
+    origin: process.env.FRONTEND_URL || "http://localhost:3000",
+    credentials: true,
+  })
+);
 
 // Middleware BodyParser et CookieParser
 app.use(bodyParser.json());
@@ -43,18 +45,24 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Middleware Session pour passport
-app.use(session({
-  secret: process.env.SESSION_SECRET,
-  resave: false,
-  saveUninitialized: false,
-}));
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET,
+    resave: false,
+    saveUninitialized: false,
+  })
+);
 
 // Middleware CSRF
 const csrfProtection = csrf({ cookie: true });
 
-// Exclusion des routes sensibles
+// ✅ CORRECTION ICI : inclure explicitement /api/csrf-token dans les exceptions
 app.use((req, res, next) => {
-  if (req.path.startsWith("/api/auth") || req.is("application/json")) {
+  if (
+    req.path.startsWith("/api/auth") ||
+    req.path === "/api/csrf-token" || // ← AJOUT POUR QUE ÇA MARCHE
+    req.is("application/json")
+  ) {
     return next();
   }
   csrfProtection(req, res, next);
@@ -69,8 +77,8 @@ app.use("/api/auth", Routesauth);
 app.use("/api/taches", Routestaches);
 app.use("/api/administrateur", adminRoutes);
 
-// Route pour exposer le token CSRF (utile pour le frontend)
-app.get("/csrf-token", (req, res) => {
+// ✅ Route pour récupérer le token CSRF (à utiliser avec Postman ou frontend)
+app.get("/api/csrf-token", csrfProtection, (req, res) => {
   res.json({ csrfToken: req.csrfToken() });
 });
 

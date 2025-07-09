@@ -6,28 +6,28 @@ const prisma = new PrismaClient();
 
 // Fonction de nettoyage XSS
 function nettoyerTexte(texte) {
-  return sanitizeHtml(texte, { allowedTags: [], allowedAttributes: {} })
+  return sanitizeHtml(texte, { allowedTags: [], allowedAttributes: {} });
 }
 
 // Liste simple de mots sensibles (à adapter selon ton app)
-const motsDangereux = ["bombe", "violence", "haine", "interdit"]
+const motsDangereux = ["bombe", "violence", "haine", "interdit"];
 
 export async function creerTache(req, res) {
-  const { title, description, dueDate, priority, visibility } = req.body
-  const userId = req.user?.userId
+  const { title, description, dueDate, priority, visibility } = req.body;
+  const userId = req.user?.userId;
 
   if (!userId || !title || !description || !dueDate || !priority) {
-    return res.status(400).json({ error: "Tous les champs sont requis." })
+    return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
   // Nettoyage XSS
-  const titreNettoye = nettoyerTexte(title)
-  const descriptionNettoyee = nettoyerTexte(description)
+  const titreNettoye = nettoyerTexte(title);
+  const descriptionNettoyee = nettoyerTexte(description);
 
   // Détection de contenu sensible
   const contientMotDangereux = motsDangereux.some((mot) =>
     descriptionNettoyee.toLowerCase().includes(mot)
-  )
+  );
 
   try {
     const nouvelleTache = await prisma.tache.create({
@@ -36,24 +36,27 @@ export async function creerTache(req, res) {
         description: descriptionNettoyee,
         dateEcheance: new Date(dueDate),
         priorite: priority,
-        statut: "en cours",
-        utilisateurId: userId, // 
+        statut: "en_cours",
+        userId: userId, //
         estPrive: visibility === "private",
         bloquee: contientMotDangereux,
       },
-    })
+    });
 
     if (contientMotDangereux) {
-      console.log(`⚠️ ALERTE : Tâche bloquée automatiquement : "${titreNettoye}"`)
+      console.log(
+        ` ALERTE : Tâche bloquée automatiquement : "${titreNettoye}"`
+      );
     }
 
-    return res.status(201).json(nouvelleTache)
+    return res.status(201).json(nouvelleTache);
   } catch (error) {
-    console.error("💥 Erreur création tâche :", error)
-    return res.status(500).json({ error: "Erreur serveur lors de la création de la tâche." })
+    console.error(" Erreur création tâche :", error);
+    return res
+      .status(500)
+      .json({ error: "Erreur serveur lors de la création de la tâche." });
   }
 }
-
 
 // Liste des tâches
 export async function listerTaches(req, res) {
@@ -85,7 +88,9 @@ export async function listerTaches(req, res) {
     res.json(taches);
   } catch (error) {
     console.error("Erreur récupération tâches :", error);
-    res.status(500).json({ error: "Erreur lors de la récupération des tâches." });
+    res
+      .status(500)
+      .json({ error: "Erreur lors de la récupération des tâches." });
   }
 }
 
@@ -95,7 +100,9 @@ export async function bloquerTache(req, res) {
   const { id } = req.params;
 
   if (role !== "administrateur") {
-    return res.status(403).json({ error: "Seul l’admin peut bloquer une tâche." });
+    return res
+      .status(403)
+      .json({ error: "Seul l’admin peut bloquer une tâche." });
   }
 
   try {
@@ -116,7 +123,9 @@ export async function debloquerTache(req, res) {
   const { id } = req.params;
 
   if (role !== "administrateur") {
-    return res.status(403).json({ error: "Seul l’admin peut débloquer une tâche." });
+    return res
+      .status(403)
+      .json({ error: "Seul l’admin peut débloquer une tâche." });
   }
 
   try {
@@ -160,7 +169,9 @@ export async function modifierTache(req, res) {
 
     // Nettoyage XSS uniquement sur les champs texte
     const titreNettoye = titre ? nettoyerTexte(titre) : undefined;
-    const descriptionNettoyee = description ? nettoyerTexte(description) : undefined;
+    const descriptionNettoyee = description
+      ? nettoyerTexte(description)
+      : undefined;
 
     const tacheModifiee = await prisma.tache.update({
       where: { id: parseInt(id) },
@@ -193,8 +204,13 @@ export async function supprimerTache(req, res) {
       where: { id: Number(id) },
     });
 
-    if (!tacheExistante || (tacheExistante.userId !== userId && role !== "administrateur")) {
-      return res.status(404).json({ error: "Tâche non trouvée ou accès refusé." });
+    if (
+      !tacheExistante ||
+      (tacheExistante.userId !== userId && role !== "administrateur")
+    ) {
+      return res
+        .status(404)
+        .json({ error: "Tâche non trouvée ou accès refusé." });
     }
 
     await prisma.tache.delete({ where: { id: Number(id) } });
@@ -207,7 +223,7 @@ export async function supprimerTache(req, res) {
 
 // Récupérer une tâche par ID
 export const getTacheById = async (req, res) => {
-  const { id } = req.params; 
+  const { id } = req.params;
 
   try {
     const tache = await prisma.tache.findUnique({ where: { id: Number(id) } });
