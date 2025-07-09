@@ -81,6 +81,7 @@ export async function register(req, res) {
 
     return res.status(201).json({
       message: "Inscription réussie ! Un email de confirmation a été envoyé.",
+       role: utilisateur.role, 
     });
   } catch (error) {
     console.error("Erreur côté serveur lors de l'inscription :", error);
