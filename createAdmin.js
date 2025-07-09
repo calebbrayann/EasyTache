@@ -9,7 +9,7 @@ async function main() {
 
   // Vérification si l'email existe déjà dans la base de données
   const existingUser = await prisma.utilisateur.findUnique({
-    where: { email },
+    where: { email },y
   });
 
   if (existingUser) {

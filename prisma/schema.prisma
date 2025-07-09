@@ -6,33 +6,54 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
+// ─────────────── ENUMS ───────────────
 enum Role {
   utilisateur
   administrateur
 }
 
+enum Priorite {
+  basse
+  moyenne
+  haute
+}
+
+enum Statut {
+  en_cours
+  terminé
+  bloqué
+}
+
+// ─────────────── MODELS ───────────────
 model Utilisateur {
-  id             Int      @id @default(autoincrement())
+  id             Int       @id @default(autoincrement())
   nomUtilisateur String
-  email          String   @unique
+  email          String    @unique
   password       String
-  role           Role     @default(utilisateur)  // Utilisation de l'enum Role
-  taches         Tache[]  // Relation avec les tâches
-  provider       String?  // Optionnel : méthode d'authentification (google, github)
-   joinDate       DateTime @default(now())
-  isActive       Boolean  @default(false)
+  role           Role      @default(utilisateur)
+  provider       String?   // "google", "github", etc.
+  joinDate       DateTime  @default(now())
+  isActive       Boolean   @default(true)
+
+  // Champs pour réinitialisation de mot de passe
+  resetToken     String?   @unique
+  resetTokenExp  DateTime?
+
+  // Relation avec les tâches
+  taches         Tache[]
 }
 
 model Tache {
-  id           Int        @id @default(autoincrement())
+  id           Int          @id @default(autoincrement())
   titre        String
   description  String
   dateEcheance DateTime?
-  priorite     String
-  statut       String
-  estPrive     Boolean    @default(false)
-  bloquee      Boolean    @default(false)
+  priorite     Priorite
+  statut       Statut
+  estPrive     Boolean      @default(false)
+  bloquee      Boolean      @default(false)
+
+  // Clé étrangère
   userId       Int
-  utilisateur  Utilisateur @relation(fields: [userId], references: [id])
+  utilisateur  Utilisateur  @relation(fields: [userId], references: [id])
 }

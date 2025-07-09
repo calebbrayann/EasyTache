@@ -15,6 +15,6 @@ tacheRouter.put("/:id", tacheController.modifierTache)
 tacheRouter.delete("/:id", canDeleteTask, tacheController.supprimerTache)
 tacheRouter.patch("/:id/bloquer", authAdminMiddleware, tacheController.bloquerTache)
 tacheRouter.patch("/:id/debloquer", authAdminMiddleware, tacheController.debloquerTache)
-tacheRouter.get("/taches/:id", tacheController.getTacheById)
+tacheRouter.get("/:id", tacheController.getTacheById)
 
 export default tacheRouter
