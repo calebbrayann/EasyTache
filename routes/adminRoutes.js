@@ -2,6 +2,9 @@
 import { Router } from "express"
 import { verifierToken as authMiddleware, authAdminMiddleware } from "../middlewares/authMiddleware.js"
 import { getAllUtilisateurs, updateUserRole } from "../controllers/authController.js"
+import { ensureAdmin } from "../middlewares/ensureAdmin.js"
+import { getLogs } from "../controllers/logController.js"
+
 
 const adminRouter = Router()
 
@@ -14,5 +17,7 @@ adminRouter.get("/dashboard", (req, res) => {
 
 adminRouter.get("/utilisateurs", getAllUtilisateurs)
 adminRouter.put("/utilisateurs/:id/role", updateUserRole)
+
+adminRouter.get("/logs", ensureAdmin, getLogs)
 
 export default adminRouter
