@@ -121,7 +121,7 @@ export async function login(req, res) {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false,
+      secure: process.env.NODE_ENV === "production",
       sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
     });
@@ -148,6 +148,19 @@ export async function getStatus(req, res) {
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+
+    // Vérifier si l'utilisateur existe et est actif
+    const utilisateur = await prisma.utilisateur.findUnique({
+      where: { id: decoded.userId },
+    });
+
+    if (!utilisateur || !utilisateur.isActive) {
+      return res.status(401).json({
+        connecté: false,
+        message: "Utilisateur inactif ou non trouvé",
+      });
+    }
+
     return res.json({
       connecté: true,
       userId: decoded.userId,
@@ -158,6 +171,7 @@ export async function getStatus(req, res) {
     return res.status(401).json({ connecté: false, message: "Token invalide" });
   }
 }
+
 
 // ➤ Suppression du compte
 export async function supprimerCompte(req, res) {
