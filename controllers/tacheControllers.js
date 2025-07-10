@@ -1,5 +1,6 @@
 import pkg from "@prisma/client";
 import sanitizeHtml from "sanitize-html"; // Protection XSS
+import { enregistrerLog } from "./logController.js"; // <-- import ajouté
 const { PrismaClient } = pkg;
 
 const prisma = new PrismaClient();
@@ -20,11 +21,9 @@ export async function creerTache(req, res) {
     return res.status(400).json({ error: "Tous les champs sont requis." });
   }
 
-  // Nettoyage XSS
   const titreNettoye = nettoyerTexte(title);
   const descriptionNettoyee = nettoyerTexte(description);
 
-  // Détection de contenu sensible
   const contientMotDangereux = motsDangereux.some((mot) =>
     descriptionNettoyee.toLowerCase().includes(mot)
   );
@@ -37,17 +36,17 @@ export async function creerTache(req, res) {
         dateEcheance: new Date(dueDate),
         priorite: priority,
         statut: "en_cours",
-        userId: userId, //
+        userId: userId,
         estPrive: visibility === "private",
         bloquee: contientMotDangereux,
       },
     });
 
     if (contientMotDangereux) {
-      console.log(
-        ` ALERTE : Tâche bloquée automatiquement : "${titreNettoye}"`
-      );
+      console.log(` ALERTE : Tâche bloquée automatiquement : "${titreNettoye}"`);
     }
+
+    await enregistrerLog(userId, `Création tâche id=${nouvelleTache.id}`);
 
     return res.status(201).json(nouvelleTache);
   } catch (error) {
@@ -58,7 +57,6 @@ export async function creerTache(req, res) {
   }
 }
 
-// Liste des tâches
 export async function listerTaches(req, res) {
   const userId = req.user?.userId;
   const role = req.user?.role;
@@ -68,16 +66,14 @@ export async function listerTaches(req, res) {
   const { priorite, statut, dateEcheance, bloquee } = req.query;
 
   const filtreBase =
-    role === "administrateur"
-      ? {} // Pas de filtre, admin voit toutes les tâches
-      : { userId, bloquee: false }; // Utilisateur normal : ses tâches non bloquées
+    role === "administrateur" ? {} : { userId, bloquee: false };
 
   const filtre = {
     ...filtreBase,
     ...(priorite && { priorite }),
     ...(statut && { statut }),
     ...(dateEcheance && { dateEcheance: new Date(dateEcheance) }),
-    ...(bloquee !== undefined && { bloquee: bloquee === "true" }), // Filtrage par "bloquee"
+    ...(bloquee !== undefined && { bloquee: bloquee === "true" }),
   };
 
   try {
@@ -85,6 +81,9 @@ export async function listerTaches(req, res) {
       where: filtre,
       orderBy: { dateEcheance: "asc" },
     });
+
+    await enregistrerLog(userId, "Consultation tâches");
+
     res.json(taches);
   } catch (error) {
     console.error("Erreur récupération tâches :", error);
@@ -94,9 +93,9 @@ export async function listerTaches(req, res) {
   }
 }
 
-// Blocage admin
 export async function bloquerTache(req, res) {
   const role = req.user?.role;
+  const userId = req.user?.userId;
   const { id } = req.params;
 
   if (role !== "administrateur") {
@@ -110,6 +109,9 @@ export async function bloquerTache(req, res) {
       where: { id: Number(id) },
       data: { bloquee: true },
     });
+
+    await enregistrerLog(userId, `Blocage tâche id=${id}`);
+
     res.json({ message: "Tâche bloquée avec succès." });
   } catch (error) {
     console.error("Erreur blocage tâche :", error);
@@ -117,9 +119,9 @@ export async function bloquerTache(req, res) {
   }
 }
 
-// Déblocage admin
 export async function debloquerTache(req, res) {
   const role = req.user?.role;
+  const userId = req.user?.userId;
   const { id } = req.params;
 
   if (role !== "administrateur") {
@@ -133,6 +135,9 @@ export async function debloquerTache(req, res) {
       where: { id: Number(id) },
       data: { bloquee: false },
     });
+
+    await enregistrerLog(userId, `Déblocage tâche id=${id}`);
+
     res.json({ message: "Tâche débloquée avec succès." });
   } catch (error) {
     console.error("Erreur déblocage tâche :", error);
@@ -140,11 +145,11 @@ export async function debloquerTache(req, res) {
   }
 }
 
-// Modification d'une tâche
 export async function modifierTache(req, res) {
   const { id } = req.params;
   const { titre, description, priorite, statut, bloquee } = req.body;
   const userRole = req.user.role;
+  const userId = req.user.userId;
 
   try {
     const tache = await prisma.tache.findUnique({
@@ -167,7 +172,6 @@ export async function modifierTache(req, res) {
       });
     }
 
-    // Nettoyage XSS uniquement sur les champs texte
     const titreNettoye = titre ? nettoyerTexte(titre) : undefined;
     const descriptionNettoyee = description
       ? nettoyerTexte(description)
@@ -184,6 +188,8 @@ export async function modifierTache(req, res) {
       },
     });
 
+    await enregistrerLog(userId, `Modification tâche id=${id}`);
+
     res.json(tacheModifiee);
   } catch (error) {
     console.error("Erreur modification tâche :", error);
@@ -191,7 +197,6 @@ export async function modifierTache(req, res) {
   }
 }
 
-// Suppression
 export async function supprimerTache(req, res) {
   const userId = req.user?.userId;
   const role = req.user?.role;
@@ -214,6 +219,9 @@ export async function supprimerTache(req, res) {
     }
 
     await prisma.tache.delete({ where: { id: Number(id) } });
+
+    await enregistrerLog(userId, `Suppression tâche id=${id}`);
+
     res.json({ message: "Tâche supprimée avec succès." });
   } catch (error) {
     console.error("Erreur suppression tâche :", error);
@@ -221,9 +229,9 @@ export async function supprimerTache(req, res) {
   }
 }
 
-// Récupérer une tâche par ID
 export const getTacheById = async (req, res) => {
   const { id } = req.params;
+  const userId = req.user?.userId;
 
   try {
     const tache = await prisma.tache.findUnique({ where: { id: Number(id) } });
@@ -231,6 +239,8 @@ export const getTacheById = async (req, res) => {
     if (!tache) {
       return res.status(404).json({ error: "Tâche non trouvée" });
     }
+
+    await enregistrerLog(userId, `Consultation tâche id=${id}`);
 
     return res.status(200).json(tache);
   } catch (error) {

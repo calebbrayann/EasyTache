@@ -24,6 +24,19 @@ enum Statut {
   bloqué
 }
 
+model Log {
+  id        String   @id @default(uuid())
+  email     String
+  type      LogType
+  timestamp DateTime @default(now())
+}
+
+enum LogType {
+  login
+  logout
+}
+
+
 // ─────────────── MODELS ───────────────
 model Utilisateur {
   id             Int       @id @default(autoincrement())

@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { envoyerEmail } from "../config/nodemailer.js";
+import { enregistrerLog } from "./logController.js";
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
 
@@ -75,19 +76,23 @@ export async function register(req, res) {
         nom: nomUtilisateur,
         email,
       });
+
+      //  Enregistrement du log "Nouvelle inscription"
+      await enregistrerLog(utilisateur.id, "Nouvelle inscription");
     } catch (err) {
       console.warn("Échec de l'envoi des emails :", err.message);
     }
 
     return res.status(201).json({
       message: "Inscription réussie ! Un email de confirmation a été envoyé.",
-       role: utilisateur.role, 
+      role: utilisateur.role,
     });
   } catch (error) {
     console.error("Erreur côté serveur lors de l'inscription :", error);
     return res.status(500).json({ error: "Erreur serveur." });
   }
 }
+
 
 export async function login(req, res) {
   const { email, password } = req.body;
@@ -116,10 +121,13 @@ export async function login(req, res) {
 
     res.cookie("token", token, {
       httpOnly: true,
-      secure: false, //
+      secure: false,
       sameSite: "None",
       maxAge: 24 * 60 * 60 * 1000,
     });
+
+    //  Ajout de l'enregistrement du log "Connexion"
+    await enregistrerLog(utilisateur.id, "Connexion");
 
     return res.json({ message: "Connexion réussie." });
   } catch (error) {
@@ -127,6 +135,7 @@ export async function login(req, res) {
     return res.status(500).json({ error: "Erreur serveur." });
   }
 }
+
 
 export async function getStatus(req, res) {
   console.log("Cookies reçus :", req.cookies);
